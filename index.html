@@ -126,6 +126,45 @@ footer{max-width:var(--maxw);margin:40px auto 0;padding:22px 26px 0;border-top:1
   main{padding:0 18px 100px}
   .hero h1{font-size:26px}
 }
+
+/* ---- flashcards ---- */
+.btn-text{width:auto;padding:0 12px;gap:6px;font-size:13px;font-weight:600}
+#fcBtn{color:var(--accent-2);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+.fc{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;flex-direction:column}
+.fc[hidden]{display:none}
+.fc-top{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.fc-top .title{font-weight:800;font-size:15px}
+.fc-top .spacer{flex:1}
+.fc-prog{height:4px;background:var(--surface-2)}
+.fc-prog>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .2s}
+.fc-stage{flex:1;overflow:auto;display:flex;justify-content:center;padding:24px 16px 32px}
+.fc-card{width:100%;max-width:720px;height:max-content;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:24px 26px 22px;margin-top:8px}
+.fc-meta{display:flex;justify-content:space-between;align-items:center;color:var(--ink-faint);font-size:12.5px;margin-bottom:12px}
+.fc-badge{font-size:10.5px;font-weight:800;border-radius:999px;padding:3px 9px;letter-spacing:.03em}
+.fc-badge.known{background:#dcefe6;color:#1f7a53}
+.fc-badge.review{background:#f7e7d6;color:#9a5a14}
+.fc-q{font-size:21px;line-height:1.36;font-weight:650;color:var(--ink);margin:2px 0}
+.fc-hint{color:var(--ink-faint);font-size:13px;margin-top:16px}
+.fc-ans{margin-top:16px;padding-top:16px;border-top:1px dashed var(--line);font-size:15.5px;line-height:1.62}
+.fc-ans>*:first-child{margin-top:0}
+.fc-controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:13px 16px 20px;border-top:1px solid var(--line);background:var(--surface)}
+.fc-btn{border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:10px;padding:10px 15px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.fc-btn:hover{border-color:var(--accent)}
+.fc-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.fc-btn.good{background:#1f8a5b;border-color:#1f8a5b;color:#fff}
+.fc-btn.soft{background:#c9781f;border-color:#c9781f;color:#fff}
+.fc-btn[disabled]{opacity:.4;cursor:default}
+.fc-kbd{opacity:.7;font-size:11px;font-weight:700;margin-left:5px}
+.fc-decks{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.deck{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:13px;padding:14px 15px;cursor:pointer;font-family:inherit;color:var(--ink)}
+.deck:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.deck h5{margin:0 0 7px;font-size:14px;line-height:1.3;font-weight:700}
+.deck small{color:var(--ink-faint);font-size:12px}
+.deck .bar{height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden;margin-top:9px}
+.deck .bar>i{display:block;height:100%;background:var(--accent)}
+.fc-summary{text-align:center;max-width:520px;margin:24px auto 0}
+.fc-stat{display:inline-flex;gap:5px;margin:4px 9px;font-size:14.5px}
+@media(max-width:640px){.fc-q{font-size:18px}.fc-card{padding:18px}#fcBtn .lbl{display:none}#fcBtn{width:38px;padding:0}}
 </style>
 </head>
 <body>
@@ -135,6 +174,7 @@ footer{max-width:var(--maxw);margin:40px auto 0;padding:22px 26px 0;border-top:1
   <span class="brand"><span class="dot"></span>Microservices Notes</span>
   <span class="spacer"></span>
   <input id="search" type="search" placeholder="Search notes..." autocomplete="off" spellcheck="false">
+  <button class="iconbtn btn-text" id="fcBtn" title="Flashcards mode">&#9638; <span class="lbl">Flashcards</span></button>
   <button class="iconbtn" id="themeBtn" aria-label="Toggle theme" title="Toggle light/dark">&#9788;</button>
 </header>
 <div class="scrim" id="scrim"></div>
@@ -168,6 +208,7 @@ def get_profile(user_id, requesting_user_id):</code></pre><p>    # Is the reader
   </main>
 </div>
 <div id="lightbox"><img alt=""></div>
+<div id="fc" class="fc" hidden></div>
 <script>
 (function(){
   var root=document.documentElement, tKey="msnotes.theme";
@@ -255,6 +296,113 @@ def get_profile(user_id, requesting_user_id):</code></pre><p>    # Is the reader
     });
     nores.style.display=any?"none":"block";
   }
+})();
+
+/* ---- flashcards: sequential, section-wise ---- */
+(function(){
+  var openBtn=document.getElementById('fcBtn'), fc=document.getElementById('fc');
+  if(!openBtn||!fc) return;
+  var CKEY='msnotes.cards.v1', PKEY='msnotes.cardpos.v1';
+  function load(k){try{return JSON.parse(localStorage.getItem(k)||'{}');}catch(e){return {};}}
+  function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+  function esc(s){return (s+'').replace(/[&<>"]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
+  var marks=load(CKEY), pos=load(PKEY);
+
+  var decks=[], all={id:'__all',title:'All sections (in order)',cards:[]};
+  document.querySelectorAll('.doc-section').forEach(function(sec){
+    var h2=sec.querySelector('h2'), title=h2?h2.textContent.trim():'Section', cards=[];
+    sec.querySelectorAll('.qa').forEach(function(qa){
+      var h3=qa.querySelector('h3'); if(!h3) return;
+      var clone=qa.cloneNode(true), ch=clone.querySelector('h3'); if(ch) ch.remove();
+      clone.querySelectorAll('a.zoom').forEach(function(a){var img=a.querySelector('img'); if(img)a.replaceWith(img);});
+      var card={id:qa.id||(sec.id+'-'+cards.length), q:h3.textContent.trim(), ans:clone.innerHTML.trim(), sec:title};
+      cards.push(card); all.cards.push(card);
+    });
+    if(cards.length) decks.push({id:sec.id,title:title,cards:cards});
+  });
+  if(all.cards.length) decks.unshift(all);
+
+  fc.innerHTML='<div class="fc-top"><span class="title">&#9638; Flashcards</span>'
+    +'<button class="fc-btn" id="fcDecks" hidden>&#8249; Sections</button><span class="spacer"></span>'
+    +'<span id="fcCount" class="fc-kbd"></span>'
+    +'<button class="iconbtn" id="fcClose" title="Close (Esc)">&#10005;</button></div>'
+    +'<div class="fc-prog"><i id="fcBar"></i></div><div class="fc-stage" id="fcStage"></div>';
+  var stage=fc.querySelector('#fcStage'), bar=fc.querySelector('#fcBar'), decksBtn=fc.querySelector('#fcDecks'), countEl=fc.querySelector('#fcCount');
+  var cur=null, idx=0, revealed=false, reviewMode=false;
+  var g=function(id){return fc.querySelector('#'+id);};
+  function counts(d){var k=0,r=0;d.cards.forEach(function(c){if(marks[c.id]==='known')k++;else if(marks[c.id]==='review')r++;});return{k:k,r:r,n:d.cards.length};}
+
+  function showDecks(){
+    cur=null; decksBtn.hidden=true; countEl.textContent=''; bar.style.width='0';
+    var h='<div style="width:100%;max-width:820px"><h2 style="margin:2px 0;font-size:22px">Study by section</h2>'
+      +'<p style="color:var(--ink-faint);margin:0 0 16px;font-size:14px">Sequential, in order &mdash; reveal each answer, then mark it. Progress saves on this device. Keys: <b>Space</b> reveal/next, <b>1</b> got it, <b>2</b> still learning.</p><div class="fc-decks">';
+    decks.forEach(function(d){var c=counts(d),pct=c.n?Math.round(c.k/c.n*100):0;
+      h+='<button class="deck" data-id="'+d.id+'"><h5>'+esc(d.title)+'</h5><small>'+c.n+' cards &middot; '+c.k+' known'+(c.r?' &middot; '+c.r+' to review':'')+'</small><div class="bar"><i style="width:'+pct+'%"></i></div></button>';
+    });
+    h+='</div></div>'; stage.innerHTML=h;
+    stage.querySelectorAll('.deck').forEach(function(b){b.onclick=function(){startDeck(b.getAttribute('data-id'));};});
+  }
+  function startDeck(id,list){
+    reviewMode=!!list;
+    cur=list?{id:id,title:'Review',cards:list}:decks.filter(function(d){return d.id===id;})[0];
+    if(!cur) return;
+    idx=reviewMode?0:(pos[cur.id]||0); if(idx>=cur.cards.length)idx=0;
+    decksBtn.hidden=false; render();
+  }
+  function render(){
+    if(idx>=cur.cards.length) return summary();
+    revealed=false; var c=cur.cards[idx], mk=marks[c.id];
+    if(!reviewMode){pos[cur.id]=idx;save(PKEY,pos);}
+    countEl.textContent=(idx+1)+' / '+cur.cards.length;
+    bar.style.width=(idx/cur.cards.length*100)+'%';
+    var badge=mk==='known'?'<span class="fc-badge known">KNOWN</span>':mk==='review'?'<span class="fc-badge review">REVIEW</span>':'';
+    stage.innerHTML='<div class="fc-card"><div class="fc-meta"><span>'+esc(c.sec||cur.title)+'</span>'+badge+'</div>'
+      +'<div class="fc-q">'+esc(c.q)+'</div><div class="fc-hint" id="fcHint">Press <b>Space</b> or tap <b>Show answer</b></div>'
+      +'<div class="fc-ans" id="fcAns" hidden>'+c.ans+'</div></div>';
+    controls();
+  }
+  function controls(){
+    var prev='<button class="fc-btn" id="fcPrev"'+(idx===0?' disabled':'')+'>&#8592; Prev</button>', body;
+    if(!revealed) body=prev+'<button class="fc-btn primary" id="fcShow">Show answer<span class="fc-kbd">Space</span></button><button class="fc-btn" id="fcNext">Skip &#8594;</button>';
+    else body=prev+'<button class="fc-btn good" id="fcGood">Got it<span class="fc-kbd">1</span></button><button class="fc-btn soft" id="fcSoft">Still learning<span class="fc-kbd">2</span></button><button class="fc-btn" id="fcNext">Next &#8594;</button>';
+    var old=g('fcCtl'); if(old)old.remove();
+    var wrap=document.createElement('div'); wrap.innerHTML='<div class="fc-controls" id="fcCtl">'+body+'</div>'; fc.appendChild(wrap.firstChild);
+    if(g('fcPrev'))g('fcPrev').onclick=function(){if(idx>0){idx--;render();}};
+    if(g('fcShow'))g('fcShow').onclick=reveal;
+    if(g('fcNext'))g('fcNext').onclick=next;
+    if(g('fcGood'))g('fcGood').onclick=function(){grade('known');};
+    if(g('fcSoft'))g('fcSoft').onclick=function(){grade('review');};
+  }
+  function reveal(){revealed=true; if(g('fcAns'))g('fcAns').hidden=false; if(g('fcHint'))g('fcHint').style.display='none'; controls();}
+  function next(){idx++;render();}
+  function grade(v){marks[cur.cards[idx].id]=v;save(CKEY,marks);next();}
+  function summary(){
+    var c=counts(cur), rev=cur.cards.filter(function(x){return marks[x.id]==='review';});
+    bar.style.width='100%'; countEl.textContent='done';
+    stage.innerHTML='<div class="fc-summary"><h2 style="font-size:23px;margin:.2em 0">Deck complete</h2>'
+      +'<p style="color:var(--ink-soft);margin:.2em 0 6px">'+esc(cur.title)+'</p>'
+      +'<div><span class="fc-stat">&#9989; '+c.k+' known</span><span class="fc-stat">&#128257; '+c.r+' to review</span></div>'
+      +'<div style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
+      +(rev.length?'<button class="fc-btn primary" id="fcRev">Review '+rev.length+' &#8594;</button>':'')
+      +'<button class="fc-btn" id="fcRestart">Restart</button><button class="fc-btn" id="fcBack">Back to sections</button></div></div>';
+    var old=g('fcCtl'); if(old)old.remove();
+    if(g('fcRev'))g('fcRev').onclick=function(){startDeck('rev-'+cur.id,rev);};
+    g('fcRestart').onclick=function(){if(!reviewMode){pos[cur.id]=0;save(PKEY,pos);}idx=0;render();};
+    g('fcBack').onclick=showDecks;
+  }
+  function open(){fc.hidden=false;document.body.style.overflow='hidden';if(!cur)showDecks();}
+  function close(){fc.hidden=true;document.body.style.overflow='';}
+  openBtn.onclick=open; g('fcClose').onclick=close; decksBtn.onclick=showDecks;
+  document.addEventListener('keydown',function(e){
+    if(fc.hidden)return;
+    if(e.key==='Escape'){close();return;}
+    if(!cur)return;
+    if(e.key===' '){e.preventDefault(); revealed?next():reveal();}
+    else if(e.key==='ArrowRight')next();
+    else if(e.key==='ArrowLeft'){if(idx>0){idx--;render();}}
+    else if(e.key==='1'&&revealed)grade('known');
+    else if(e.key==='2'&&revealed)grade('review');
+  });
 })();
 </script>
 </body>
