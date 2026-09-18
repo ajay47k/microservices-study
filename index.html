@@ -118,6 +118,8 @@ footer{max-width:var(--maxw);margin:40px auto 0;padding:22px 26px 0;border-top:1
 @media(max-width:900px){
   :root{--sbw:0px}
   #menuBtn{display:grid}
+  header.top{gap:10px}
+  #search{flex:1 1 auto;width:auto;min-width:0}
   .layout{grid-template-columns:1fr}
   nav.side{position:fixed;top:0;left:0;height:100vh;width:290px;background:var(--surface);z-index:70;
     transform:translateX(-100%);transition:transform .22s ease;border-right:1px solid var(--line);padding-top:16px}
@@ -164,14 +166,15 @@ footer{max-width:var(--maxw);margin:40px auto 0;padding:22px 26px 0;border-top:1
 .deck .bar>i{display:block;height:100%;background:var(--accent)}
 .fc-summary{text-align:center;max-width:520px;margin:24px auto 0}
 .fc-stat{display:inline-flex;gap:5px;margin:4px 9px;font-size:14.5px}
-@media(max-width:640px){.fc-q{font-size:18px}.fc-card{padding:18px}#fcBtn .lbl{display:none}#fcBtn{width:38px;padding:0}}
+@media(max-width:620px){.brand .bl{display:none}header.top{gap:9px;padding:10px 13px}#search{font-size:16px}}
+@media(max-width:640px){.fc-q{font-size:18px}.fc-card{padding:18px}#fcBtn .lbl{display:none}#fcBtn{width:38px;padding:0}.fc-stage{padding:18px 13px 30px}.fc-controls{gap:8px;padding:12px 12px 18px}.fc-btn{padding:9px 12px;font-size:13.5px}}
 </style>
 </head>
 <body>
 <div id="progress"></div>
 <header class="top">
   <button class="iconbtn" id="menuBtn" aria-label="Menu">&#9776;</button>
-  <span class="brand"><span class="dot"></span>Microservices Notes</span>
+  <span class="brand"><span class="dot"></span><span class="bl">Microservices Notes</span></span>
   <span class="spacer"></span>
   <input id="search" type="search" placeholder="Search notes..." autocomplete="off" spellcheck="false">
   <button class="iconbtn btn-text" id="fcBtn" title="Flashcards mode">&#9638; <span class="lbl">Flashcards</span></button>
